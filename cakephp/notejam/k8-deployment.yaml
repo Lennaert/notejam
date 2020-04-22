@@ -1,0 +1,52 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+    name: notejam
+spec:
+    replicas: 1
+    template:
+        metadata:
+            labels:
+                app: notejam
+        spec:
+            containers:
+                - name: nginx
+                  image: 'eu.gcr.io/lennie-notejam/nginx:1.7.9'
+                  imagePullPolicy: IfNotPresent
+                  ports:
+                      - containerPort: 80
+                  resources:
+                      requests:
+                          cpu: "10m"
+                - name: notejam
+                  image: 'eu.gcr.io/lennie-notejam/notejam:latest'
+                  imagePullPolicy: Always
+                  ports:
+                      - containerPort: 80
+                  resources:
+                      requests:
+                          cpu: 50m
+                  env:
+                      - name: DEBUG
+                        value: "0"
+                      - name: SECURITY_SALT
+                        value: 02407315c351ff144f682ed43de80a20a83a2fa93d41d284ad11e57ec246aa2f
+                      - name: GOOGLE_APPLICATION_CREDENTIALS
+                        value: /var/www/html/****.json
+                      - name: GCE_PROJECT_ID
+                        value: lennie-notejam
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: notejam
+    labels:
+        name: notejam
+spec:
+    ports:
+        - port: 80
+          targetPort: 80
+          protocol: TCP
+    selector:
+        app: notejam
+    type: NodePort
