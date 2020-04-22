@@ -14,8 +14,15 @@
  */
 namespace App\Controller;
 
+use App\Model\Document\Pad;
+use App\Model\Document\User;
 use Cake\Controller\Controller;
+use Cake\Http\Exception\BadRequestException;
+use Cake\Http\Exception\ForbiddenException;
+use Cake\Http\Exception\NotFoundException;
 use Cake\ORM\TableRegistry;
+use Google\Cloud\Core\Exception\GoogleException;
+use Google\Cloud\Firestore\FirestoreClient;
 
 /**
  * Application Controller
@@ -27,6 +34,8 @@ use Cake\ORM\TableRegistry;
  */
 class AppController extends Controller
 {
+    /** @var FirestoreClient */
+    public $db;
 
     /**
      * Initialization hook method.
@@ -34,10 +43,21 @@ class AppController extends Controller
      * Use this method to add common initialization code like loading components.
      *
      * @return void
+     * @throws BadRequestException
      */
     public function initialize()
     {
         parent::initialize();
+
+        // Create the Cloud Firestore client
+        try {
+            $db = new FirestoreClient([
+                'projectId' => env('GCE_PROJECT_ID'),
+            ]);
+        } catch (GoogleException $exception) {
+            throw new BadRequestException('Firestore issue; ' . $exception->getMessage());
+        }
+
         $this->loadComponent('Flash');
         $this->loadComponent('Auth', [
             'authenticate' => [
@@ -59,20 +79,24 @@ class AppController extends Controller
     /**
      * Get authenticated user
      *
-     * @return App\Model\Entity\User
+     * @return User
      */
     protected function getUser()
     {
         $id = $this->request->session()->read('Auth.User.id');
-        return TableRegistry::get('Users')->get($id, [
-            'contain' => ['Pads', 'Notes']
-        ]);
+
+        $docRef = $this->db->collection('users')->document($id);
+        $snapshot = $docRef->snapshot();
+        $user = new User($snapshot->data(), $snapshot->id());
+
+        return $user;
     }
 
     /**
      * Build order statetment
      *
      * @param string $order Order param
+     * @todo
      * @return array
      */
     public function buildOrderBy($order)

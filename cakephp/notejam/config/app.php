@@ -212,7 +212,7 @@ return [
             'className' => 'Cake\Database\Connection',
             'driver' => 'Cake\Database\Driver\Sqlite',
             'persistent' => false,
-            'database' => 'notejam.db',
+            'database' => 'do-not-keep.db',
             'encoding' => 'utf8',
             'timezone' => 'UTC',
             'cacheMetadata' => true,

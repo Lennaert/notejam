@@ -2,13 +2,19 @@
 namespace App\Controller;
 
 use App\Controller\AppController;
+use App\Model\Document\Note;
+use App\Model\Document\Pad;
 use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\Http\Exception\BadRequestException;
+use Cake\Http\Exception\ForbiddenException;
+use Cake\Http\Exception\NotFoundException;
 use Cake\ORM\TableRegistry;
+use Google\Cloud\Core\Exception\GoogleException;
+use Google\Cloud\Firestore\FirestoreClient;
 
 /**
  * Notes Controller
  *
- * @property \App\Model\Table\NotesTable $Notes
  */
 class NotesController extends AppController
 {
@@ -49,7 +55,7 @@ class NotesController extends AppController
     public function view($id = null)
     {
         $note = $this->getNote($id);
-        $this->set('note', $note);
+        $this->set('note', $note->toArray());
     }
 
     /**
@@ -59,19 +65,17 @@ class NotesController extends AppController
      */
     public function create()
     {
-        $note = $this->Notes->newEntity();
+        $note = new Note($this->request->getData(), uniqid());
+        $note->setUserId($this->Auth->user('id'));
+
         if ($this->request->is('post')) {
-            $note = $this->Notes->patchEntity($note, array_merge(
-                $this->request->data,
-                ['user_id' => $this->getUser()->id]
-            ));
-            if ($this->Notes->save($note)) {
-                $this->Flash->success(__('The note has been saved.'));
-                return $this->redirect(['action' => 'index']);
-            } else {
-                $this->Flash->error(__('The note could not be saved. Please, try again.'));
+            $newNote = $this->db->collection('notes')->newDocument();
+            if ($newNote->set($note->toArray())) {
+                $this->Flash->success(__('The note has been created.'));
+                return $this->redirect(['action' => 'view', 'id' => $newNote->getId()]);
             }
         }
+
         // current pad
         $pad = $this->request->query('pad');
 
@@ -90,15 +94,20 @@ class NotesController extends AppController
     public function edit($id = null)
     {
         $note = $this->getNote($id);
+        $docRef = $this->db->collection('notes')->document($note->getId());
+
         if ($this->request->is(['patch', 'post', 'put'])) {
-            $note = $this->Notes->patchEntity($note, $this->request->data);
-            if ($this->Notes->save($note)) {
+            $editedNote = (new Note($this->request->getData(), $note->getId()));
+            $editedNote->setUserId($this->Auth->user('id'));
+
+            if ($docRef->set($editedNote->toArray(), ['merge' => true])) {
                 $this->Flash->success(__('The note has been saved.'));
-                return $this->redirect(['action' => 'view', 'id' => $note->id]);
+                return $this->redirect(['action' => 'view', 'id' => $note->getId()]);
             } else {
                 $this->Flash->error(__('The note could not be saved. Please, try again.'));
             }
         }
+
         $pads = collection($this->getUser()->pads)->combine('id', 'name')->toArray();
         $this->set(compact('note', 'pads'));
     }
@@ -113,10 +122,12 @@ class NotesController extends AppController
     public function delete($id = null)
     {
         $note = $this->getNote($id);
+
         if ($this->request->is('post')) {
-            $this->Notes->delete($note);
-            $this->Flash->success(__('The note has been deleted.'));
-            return $this->redirect(['action' => 'index']);
+            if ($docRef = $this->db->collection('notes')->document($note->getId())->delete()) {
+                $this->Flash->success(__('The note has been deleted.'));
+                return $this->redirect(['_name' => 'index']);
+            }
         }
         $this->set(compact('note'));
     }
@@ -129,10 +140,20 @@ class NotesController extends AppController
      */
     protected function getNote($id)
     {
-        return TableRegistry::get('Notes')->find()
-            ->contain(['Pads', 'Users'])
-            ->where(['Notes.id' => $id])
-            ->where(['Notes.user_id' => $this->getUser()->id])
-            ->firstOrFail();
+        $docRef = $this->db->collection('notes')->document($id);
+        $snapshot = $docRef->snapshot();
+
+        $note = null;
+        if ($snapshot->exists()) {
+            $note = new Note($snapshot->data(), $snapshot->id());
+        } else {
+            throw new NotFoundException('Cannot find the note');
+        }
+
+        if ($note->getUserId() != $this->Auth->user('id')) {
+            throw new ForbiddenException('This note does not belong to you');
+        }
+
+        return $note;
     }
 }

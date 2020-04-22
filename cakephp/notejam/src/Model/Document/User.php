@@ -1,28 +1,36 @@
 <?php
-namespace App\Model\Entity;
+namespace App\Model\Document;
 
-use Cake\ORM\Entity;
+use App\Model\Document;
 use Cake\Auth\DefaultPasswordHasher;
-
 
 /**
  * User Entity.
  */
-class User extends Entity
+class User extends Document
 {
+    /** @var string */
+    public $email;
+    /** @var string */
+    public $password;
 
     /**
-     * Fields that can be mass assigned using newEntity() or patchEntity().
-     *
-     * @var array
+     * @return string
      */
-    protected $_accessible = [
-        'email' => true,
-        'password' => true,
-        'notes' => true,
-        'pads' => true,
-    ];
+    public function getEmail()
+    {
+        return $this->email;
+    }
 
+    /**
+     * @param string $email
+     * @return User
+     */
+    public function setEmail($email)
+    {
+        $this->email = $email;
+        return $this;
+    }
 
     /**
      * Password setter
@@ -30,10 +38,11 @@ class User extends Entity
      * @param string $value password
      * @return string
      */
-    protected function _setPassword($value)
+    public function setPassword($value)
     {
         $hasher = new DefaultPasswordHasher();
-        return $hasher->hash($value);
+        $this->password = $hasher->hash($value);
+        return $this;
     }
 
     /**

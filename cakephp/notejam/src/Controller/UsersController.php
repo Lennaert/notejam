@@ -4,6 +4,7 @@ namespace App\Controller;
 use App\Controller\AppController;
 use App\Form\SettingsForm;
 use App\Form\ForgotPasswordForm;
+use App\Model\Document\User;
 use Cake\Core\Configure;
 use Cake\Network\Email\Email;
 
@@ -29,14 +30,18 @@ class UsersController extends AppController
     /**
      * Signup action
      *
+     * @todo check if the e-mail address already exists
      * @return void Redirects on successful signup, renders errors otherwise.
      */
     public function signup()
     {
-        $user = $this->Users->newEntity();
+        $user = new User();
+        $user->setPassword($this->request->getData('password'));
+        $user->setEmail($this->request->getData('email'));
+
         if ($this->request->is('post')) {
-            $user = $this->Users->patchEntity($user, $this->request->data);
-            if ($this->Users->save($user)) {
+            $newUser = $this->db->collection('users')->newDocument();
+            if ($newUser->set($user->toArray())) {
                 $this->Flash->success(__('Now you can signin'));
                 return $this->redirect(['action' => 'signin']);
             } else {
@@ -76,70 +81,32 @@ class UsersController extends AppController
     /**
      * Account settings action
      *
+     * @todo
      * @return void
      */
     public function settings()
     {
-        $settings = new SettingsForm();
-        if ($this->request->is('post') &&
-            $settings->validate($this->request->data)) {
 
-            $user = $this->getUser();
-            if ($user->checkPassword($this->request->data['current_password'])) {
-                $user->password = $this->request->data['new_password'];
-                $this->Users->save($user);
-                $this->Flash->success('Password is successfully changed.');
-                return $this->redirect(['_name' => 'index']);
-            }
-            $this->Flash->error('Current password is not correct.');
-        }
-        $this->set(compact('settings'));
     }
 
     /**
      * Forgot password action
      *
+     * @todo
      * @return void
      */
     public function forgotPassword()
     {
-        $form = new ForgotPasswordForm();
-        if ($this->request->is('post') &&
-            $form->validate($this->request->data)) {
 
-            $user = $this->Users->find()
-                         ->where(['email' => $this->request->data['email']])
-                         ->first();
-            if ($user) {
-                $this->resetPassword($user);
-                $this->Flash->success('New temp password is sent to your inbox.');
-                return $this->redirect(['_name' => 'index']);
-            }
-            $this->Flash->error('User with given email does not exist.');
-        }
-        $this->set(compact('form'));
     }
 
     /**
      * Reset user's password
      *
-     * @param App\Model\Entity\User $user User
-     * @return void
+     * @todo
      */
-    protected function resetPassword($user)
+    protected function resetPassword()
     {
-        // primitive way to generate temporary password
-        $user->password = $password = substr(
-            sha1(time() . rand() . Configure::read('Security.salt')), 0, 8
-        );
-        $this->Users->save($user);
 
-        Email::deliver(
-            $user->email,
-            "New notejam password",
-            "Your new temporary password is {$password}.
-             We recommend you to change it after signing in.",
-            ["from" => "noreply@notejamapp.com", "transport" => "default"]
-        );
     }
 }
