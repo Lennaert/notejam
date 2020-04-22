@@ -47,12 +47,15 @@ use Cake\Core\Plugin;
 use Cake\Database\Type;
 use Cake\Datasource\ConnectionManager;
 use Cake\Error\ErrorHandler;
+use Cake\Http\Exception\BadRequestException;
 use Cake\Log\Log;
 use Cake\Network\Email\Email;
 use Cake\Network\Request;
 use Cake\Routing\DispatcherFactory;
 use Cake\Utility\Inflector;
 use Cake\Utility\Security;
+use Google\Cloud\Core\Exception\GoogleException;
+use Google\Cloud\Firestore\FirestoreClient;
 
 /**
  * Read configuration file and inject configuration into various
@@ -200,3 +203,16 @@ DispatcherFactory::add('ControllerFactory');
  * This is needed for matching the auto-localized string output of Time() class when parsing dates.
  */
 Type::build('datetime')->useLocaleParser();
+
+try {
+    $db = new FirestoreClient([
+        'projectId' => env('GCE_PROJECT_ID'),
+    ]);
+} catch (GoogleException $exception) {
+    throw new BadRequestException('Firestore issue; ' . $exception->getMessage());
+}
+
+$handler = $db->sessionHandler();
+session_set_save_handler($handler, true);
+session_save_path('sessions');
+session_start();

@@ -51,7 +51,7 @@ class AppController extends Controller
 
         // Create the Cloud Firestore client
         try {
-            $db = new FirestoreClient([
+            $this->db = new FirestoreClient([
                 'projectId' => env('GCE_PROJECT_ID'),
             ]);
         } catch (GoogleException $exception) {
