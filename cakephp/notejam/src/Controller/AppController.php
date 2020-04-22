@@ -61,7 +61,7 @@ class AppController extends Controller
         $this->loadComponent('Flash');
         $this->loadComponent('Auth', [
             'authenticate' => [
-                'Form' => [
+                'FirestoreForm' => [
                     'fields' => [
                         'username' => 'email',
                         'password' => 'password'
