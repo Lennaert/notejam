@@ -258,15 +258,13 @@ return [
      */
     'Log' => [
         'debug' => [
-            'className' => 'Cake\Log\Engine\FileLog',
-            'path' => LOGS,
-            'file' => 'debug',
+            'className' => 'Cake\Log\Engine\ConsoleLog',
+            'stream' => 'php://stdout',
             'levels' => ['notice', 'info', 'debug'],
         ],
         'error' => [
-            'className' => 'Cake\Log\Engine\FileLog',
-            'path' => LOGS,
-            'file' => 'error',
+            'className' => 'Cake\Log\Engine\ConsoleLog',
+            'stream' => 'php://stderr',
             'levels' => ['warning', 'error', 'critical', 'alert', 'emergency'],
         ],
     ],
