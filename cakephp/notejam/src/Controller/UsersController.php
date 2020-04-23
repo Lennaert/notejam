@@ -6,7 +6,9 @@ use App\Form\SettingsForm;
 use App\Form\ForgotPasswordForm;
 use App\Model\Document\User;
 use Cake\Core\Configure;
+use Cake\Log\Log;
 use Cake\Network\Email\Email;
+use Psr\Log\LogLevel;
 
 /**
  * Users Controller
@@ -42,6 +44,7 @@ class UsersController extends AppController
         if ($this->request->is('post')) {
             $newUser = $this->db->collection('users')->newDocument();
             if ($newUser->set($user->toArray())) {
+                Log::write(LogLevel::INFO, "UsersController:: New registration");
                 $this->Flash->success(__('Now you can signin'));
                 return $this->redirect(['action' => 'signin']);
             } else {
@@ -61,8 +64,11 @@ class UsersController extends AppController
         if ($this->request->is('post')) {
             $user = $this->Auth->identify();
             if ($user) {
+                Log::write(LogLevel::INFO, "UsersController:: New Login");
                 $this->Auth->setUser($user);
                 return $this->redirect($this->Auth->redirectUrl());
+            } else {
+                Log::write(LogLevel::INFO, "UsersController:: Login failure");
             }
             $this->Flash->error('Your username or password is incorrect.');
         }
